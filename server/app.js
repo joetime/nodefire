@@ -1,5 +1,5 @@
 const express = require('express')
-var firebase = require('firebase');
+const firebase = require('firebase');
 const bodyParser = require("body-parser");
 const app = express()
 
@@ -13,11 +13,21 @@ var firebase_config = {
     messagingSenderId: "101241005137"
 };
 firebase.initializeApp(firebase_config);
+var DB = firebase.database().ref('/nodetest');
+
+// listen for fb events
+var count = 0;
+DB.on("child_added", function (snap) {
+    count++;
+    console.log("added:", snap.key);
+});
+
 
 // middleware ... all requests use this
 app.use(bodyParser.json());
 
 
+// Hello World!
 app.get('/', (req, res) => {
     console.log(req.content);
     res.send('Hello World!')
@@ -26,9 +36,26 @@ app.get('/', (req, res) => {
 // Simple echo for testing
 app.post('/echo', (req, res) => {
     console.log(req.body);
-    var data = { "body": req.body, "params": req.params, "query": req.query };
-    firebase.database().ref('/nodetest').push(data);
+    var ts = (new Date()).toISOString();
+    var data = { "_ts": ts, "body": req.body, "params": req.params, "query": req.query };
     res.send(data);
+});
+
+// push request info to a test list
+app.post('/push', (req, res) => {
+    console.log(req.body);
+    var ts = (new Date()).toISOString();
+    var data = { "_ts": ts, "body": req.body, "params": req.params, "query": req.query };
+    DB.push(data);
+    res.send(data);
+});
+
+// get a list of the requests pushed
+app.get('/list', (req, res) => {
+    console.log(req.body);
+    DB.once("value", function (data) {
+        res.send(data);
+    });
 });
 
 app.listen(3000, () => console.log('Example app listening on port 3000!'))
